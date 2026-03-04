@@ -71,7 +71,7 @@ System Flow
                               │
                               ↓
                        ┌──────────────┐
-                       │ LLM Provider │ ← Ollama / Claude / GPT
+                       │ LLM Provider │ ← OLLMA/Claude / GPT
                        │ Generation   │
                        └──────┬───────┘
                               │

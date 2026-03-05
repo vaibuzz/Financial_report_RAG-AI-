@@ -427,10 +427,6 @@ from rag.providers import OpenAIProvider
 provider = OpenAIProvider(api_key="your-key", model="gpt-4o-mini")
 ```
 
-## License
-
-MIT License - see [LICENSE](LICENSE) file for details
-
 ## Author
 
 **Vaibhav Patil**

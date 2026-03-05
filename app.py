@@ -11,7 +11,7 @@ import streamlit as st
 from dotenv import load_dotenv
 
 from rag.complete_rag_system import CompleteRAGSystem
-from rag.providers import AnthropicProvider, OpenAIProvider
+from rag.providers import AnthropicProvider, OpenAIProvider, OllamaProvider
 
 # Page config
 st.set_page_config(
@@ -53,8 +53,11 @@ def initialize_rag_system(provider_type: str, api_key: str, model: str):
     """Initialize RAG system with caching."""
     if provider_type == "Anthropic":
         provider = AnthropicProvider(api_key=api_key, model=model)
-    else:
+    elif provider_type == "OpenAI":
         provider = OpenAIProvider(api_key=api_key, model=model)
+    else:
+        # Pass empty API key for Ollama as it is ignored
+        provider = OllamaProvider(api_key="", model=model)
 
     return CompleteRAGSystem(llm_provider=provider)
 
@@ -65,19 +68,19 @@ def main():
 
     st.markdown('<h1 class="main-header">📊 Financial Document Q&A System</h1>', unsafe_allow_html=True)
     st.markdown("""
-    Sistema RAG (Retrieval Augmented Generation) per l'analisi di documenti finanziari.
-    Carica i tuoi PDF e fai domande con risposte basate sul contenuto effettivo.
+    RAG (Retrieval Augmented Generation) system for financial document analysis.
+    Upload your PDFs and ask questions with answers based on the actual content.
     """)
 
     # Sidebar - Configuration
     with st.sidebar:
-        st.header("⚙️ Configurazione")
+        st.header("⚙️ Configuration")
 
         # Provider selection
         provider_type = st.selectbox(
             "LLM Provider",
-            ["Anthropic", "OpenAI"],
-            help="Seleziona il provider LLM"
+            ["Anthropic", "OpenAI", "Ollama"],
+            help="Select the LLM provider"
         )
 
         # Model selection
@@ -87,89 +90,101 @@ def main():
                 "Claude Sonnet 3.5": "claude-sonnet-3-5-20241022",
                 "Claude Haiku 3.5": "claude-haiku-3-5-20241022"
             }
-        else:
+        elif provider_type == "OpenAI":
             model_options = {
                 "GPT-4o": "gpt-4o",
                 "GPT-4o Mini": "gpt-4o-mini",
                 "GPT-4 Turbo": "gpt-4-turbo"
             }
+        else:
+            model_options = {
+                "Llama 3 (8B)": "llama3",
+                "Mistral (7B)": "mistral",
+                "Phi-3 (3.8B)": "phi3",
+                "Gemma (2B/7B)": "gemma",
+                "Llama 3.2 (3B)": "llama3.2"
+            }
 
         selected_model = st.selectbox(
-            "Modello",
+            "Model",
             list(model_options.keys())
         )
         model = model_options[selected_model]
 
-        # API Key
-        api_key_env = "ANTHROPIC_API_KEY" if provider_type == "Anthropic" else "OPENAI_API_KEY"
-        api_key = st.text_input(
-            f"API Key ({provider_type})",
-            type="password",
-            value=os.getenv(api_key_env, ""),
-            help=f"La tua {provider_type} API key"
-        )
+        # API Key (Hidden if Ollama)
+        if provider_type != "Ollama":
+            api_key_env = "ANTHROPIC_API_KEY" if provider_type == "Anthropic" else "OPENAI_API_KEY"
+            api_key = st.text_input(
+                f"API Key ({provider_type})",
+                type="password",
+                value=os.getenv(api_key_env, ""),
+                help=f"Your {provider_type} API key"
+            )
+        else:
+            api_key = ""  # Not needed for local Ollama
+            st.info("💡 Ollama does not require an API Key. Models run locally at zero cost.")
 
         st.divider()
 
         # RAG Parameters
-        st.subheader("Parametri RAG")
+        st.subheader("RAG Parameters")
 
         k_results = st.slider(
-            "Numero di chunk da recuperare",
+            "Number of chunks to retrieve",
             min_value=1,
             max_value=10,
             value=5,
-            help="Quanti chunk del documento usare come contesto"
+            help="How many document chunks to use as context"
         )
 
         min_score = st.slider(
-            "Soglia similarità minima",
+            "Minimum similarity threshold",
             min_value=0.0,
             max_value=1.0,
             value=0.5,
             step=0.05,
-            help="Score minimo per includere un chunk (0-1)"
+            help="Minimum score to include a chunk (0-1)"
         )
 
         enable_streaming = st.checkbox(
-            "Abilita streaming",
+            "Enable streaming",
             value=True,
-            help="Mostra la risposta man mano che viene generata"
+            help="Show the response as it is being generated"
         )
 
         st.divider()
 
         # System stats
         if 'rag_system' in st.session_state and st.session_state.rag_system:
-            st.subheader("📈 Statistiche Sistema")
+            st.subheader("📈 System Statistics")
             total_docs = st.session_state.rag_system.vector_store.index.ntotal
-            st.metric("Chunk indicizzati", total_docs)
+            st.metric("Indexed chunks", total_docs)
 
             if 'total_cost' in st.session_state:
-                st.metric("Costo totale", f"${st.session_state.total_cost:.4f}")
+                st.metric("Total cost", f"${st.session_state.total_cost:.4f}")
 
             if 'total_queries' in st.session_state:
-                st.metric("Query totali", st.session_state.total_queries)
+                st.metric("Total queries", st.session_state.total_queries)
 
     # Main area - Two columns
     col1, col2 = st.columns([1, 1])
 
     with col1:
-        st.header("📁 Caricamento Documenti")
+        st.header("📁 Document Upload")
 
         # File uploader
         uploaded_files = st.file_uploader(
-            "Carica PDF",
+            "Upload PDF",
             type=['pdf'],
             accept_multiple_files=True,
-            help="Carica uno o più file PDF da indicizzare"
+            help="Upload one or more PDF files to index"
         )
 
-        if uploaded_files and st.button("🚀 Indicizza Documenti", type="primary"):
-            if not api_key:
-                st.error(f"⚠️ Inserisci la tua {provider_type} API key nella sidebar!")
+        if uploaded_files and st.button("🚀 Index Documents", type="primary"):
+            if not api_key and provider_type != "Ollama":
+                st.error(f"⚠️ Please enter your {provider_type} API key in the sidebar!")
             else:
-                with st.spinner("Inizializzazione sistema RAG..."):
+                with st.spinner("Initializing RAG system..."):
                     # Initialize RAG system
                     rag_system = initialize_rag_system(provider_type, api_key, model)
 
@@ -187,7 +202,7 @@ def main():
                         status_text = st.empty()
 
                         for i, pdf_path in enumerate(pdf_paths):
-                            status_text.text(f"Indicizzazione {Path(pdf_path).name}...")
+                            status_text.text(f"Indexing {Path(pdf_path).name}...")
                             progress_bar.progress((i + 1) / len(pdf_paths))
 
                         rag_system.index_documents(pdf_paths)
@@ -197,13 +212,13 @@ def main():
                     st.session_state.total_cost = 0.0
                     st.session_state.total_queries = 0
 
-                    st.success(f"✅ {len(uploaded_files)} documenti indicizzati con successo!")
+                    st.success(f"✅ {len(uploaded_files)} documents indexed successfully!")
                     st.rerun()
 
         # Show indexed files
         if 'rag_system' in st.session_state and st.session_state.rag_system:
             st.divider()
-            st.subheader("📚 Documenti Indicizzati")
+            st.subheader("📚 Indexed Documents")
 
             # Extract unique sources from metadata
             if st.session_state.rag_system.vector_store.metadata:
@@ -215,20 +230,20 @@ def main():
                     st.text(f"📄 {source}")
 
     with col2:
-        st.header("💬 Fai una Domanda")
+        st.header("💬 Ask a Question")
 
         if 'rag_system' not in st.session_state or not st.session_state.rag_system:
-            st.info("👈 Carica prima dei documenti PDF nella colonna a sinistra")
+            st.info("👈 Please load PDF documents in the left column first")
         else:
             # Query input
             query = st.text_area(
-                "La tua domanda",
-                placeholder="Es: Qual è stata la crescita dei ricavi nel Q4 2023?",
+                "Your question",
+                placeholder="Ex: What was the revenue growth in Q4 2023?",
                 height=100
             )
 
-            if st.button("🔍 Cerca Risposta", type="primary", disabled=not query):
-                with st.spinner("Ricerca in corso..."):
+            if st.button("🔍 Search Answer", type="primary", disabled=not query):
+                with st.spinner("Searching..."):
                     # Query the system
                     response = st.session_state.rag_system.query(
                         question=query,
@@ -243,27 +258,27 @@ def main():
 
                     # Display response
                     st.divider()
-                    st.subheader("✨ Risposta")
+                    st.subheader("✨ Answer")
                     st.markdown(response.answer)
 
                     # Display metadata
                     st.divider()
                     cols = st.columns(3)
                     with cols[0]:
-                        st.metric("Token utilizzati", response.tokens_used)
+                        st.metric("Tokens used", response.tokens_used)
                     with cols[1]:
-                        st.metric("Costo query", f"${response.cost_usd:.6f}")
+                        st.metric("Query cost", f"${response.cost_usd:.6f}")
                     with cols[2]:
-                        st.metric("Fonti utilizzate", len(response.sources))
+                        st.metric("Sources used", len(response.sources))
 
                     # Display sources
                     if response.sources:
                         st.divider()
-                        st.subheader("📖 Fonti")
+                        st.subheader("📖 Sources")
 
                         for i, source in enumerate(response.sources, 1):
                             with st.expander(
-                                    f"Fonte {i}: {source.metadata.get('source', 'unknown')} - Pagina {source.metadata.get('page', '-')} "
+                                    f"Source {i}: {source.metadata.get('source', 'unknown')} - Page {source.metadata.get('page', '-')} "
                                     f"(Score: {source.score:.4f})"
                             ):
                                 st.text(source.chunk_text)
@@ -274,7 +289,7 @@ def main():
     <div style='text-align: center; color: #6B7280; padding: 2rem;'>
         <p><strong>Financial Document RAG System</strong></p>
         <p>Powered by SentenceTransformers, FAISS, and {provider}</p>
-        <p>Built by Alessandro Osti | <a href='https://github.com/alosti/financial-doc-rag'>GitHub</a></p>
+        <p>Built by Vaibhav Patil | <a href='https://github.com/vaibuzz/Financial_report_RAG-AI-.git'>GitHub</a></p>
     </div>
     """.format(provider=provider_type), unsafe_allow_html=True)
 

@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 class InitializeRequest(BaseModel):
     """Request to initialize RAG system."""
-    provider: Literal["anthropic", "openai"] = Field(
+    provider: Literal["anthropic", "openai", "ollama"] = Field(
         ...,
         description="LLM provider"
     )
@@ -40,7 +40,7 @@ class QueryRequest(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "question": "Qual è stata la crescita dei ricavi nel Q4 2023?",
+                "question": "What was the revenue growth in Q4 2023?",
                 "k": 5,
                 "min_score": 0.5
             }

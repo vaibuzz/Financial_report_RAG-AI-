@@ -67,7 +67,7 @@ async def query_documents_stream(
             # Handle errors that occur before streaming starts
             error_event = {
                 "type": "error",
-                "message": f"Errore del server: {str(e)}"
+                "message": f"Server error: {str(e)}"
             }
             yield f"data: {json.dumps(error_event, ensure_ascii=False)}\n\n"
             yield f"data: {json.dumps({'type': 'done'}, ensure_ascii=False)}\n\n"

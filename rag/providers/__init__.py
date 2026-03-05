@@ -10,6 +10,7 @@ from typing import Optional, Union
 from .anthropic import AnthropicProvider
 from .base import BaseLLMProvider, Message, CompletionResponse
 from .openai import OpenAIProvider
+from .ollama import OllamaProvider
 
 
 class ProviderType(str, Enum):
@@ -20,6 +21,7 @@ class ProviderType(str, Enum):
     """
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
+    OLLAMA = "ollama"
 
     def __str__(self) -> str:
         return self.value
@@ -48,6 +50,7 @@ class ProviderFactory:
     _PROVIDERS = {
         ProviderType.ANTHROPIC: AnthropicProvider,
         ProviderType.OPENAI: OpenAIProvider,
+        ProviderType.OLLAMA: OllamaProvider,
     }
 
     @classmethod
@@ -62,7 +65,7 @@ class ProviderFactory:
         Create LLM provider.
 
         Args:
-            provider_name: ProviderType enum or string ("anthropic", "openai")
+            provider_name: ProviderType enum or string ("anthropic", "openai", "ollama")
             api_key: Provider API key
             model: Model name (optional, uses provider default)
             **kwargs: Additional provider-specific parameters
@@ -133,6 +136,7 @@ __all__ = [
     # Concrete providers (per uso avanzato)
     "AnthropicProvider",
     "OpenAIProvider",
+    "OllamaProvider",
     # Factory (main entry point)
     "ProviderFactory",
 ]

@@ -210,7 +210,7 @@ class CompleteRAGSystem:
                 )
                 yield {
                     "type": "token",
-                    "text": f"Non ho trovato informazioni sufficientemente rilevanti per rispondere a questa domanda (soglia di similarità: {min_score})."
+                    "text": f"I couldn't find information relevant enough to answer this question (similarity threshold: {min_score})."
                 }
                 yield {"type": "done"}
                 return
@@ -255,7 +255,7 @@ class CompleteRAGSystem:
             self.logger.error(f"Error during streaming query: {str(e)}", exc_info=True)
             yield {
                 "type": "error",
-                "message": f"Errore durante la query: {str(e)}"
+                "message": f"Query error: {str(e)}"
             }
             yield {"type": "done"}
 

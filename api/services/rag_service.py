@@ -18,7 +18,7 @@ from api.models.responses import (
     DocumentListResponse
 )
 from rag.complete_rag_system import CompleteRAGSystem
-from rag.providers import AnthropicProvider, OpenAIProvider, BaseLLMProvider
+from rag.providers import AnthropicProvider, OpenAIProvider, OllamaProvider, BaseLLMProvider
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +105,8 @@ class RAGService:
             return AnthropicProvider(api_key=api_key, model=model)
         elif provider_lower == "openai":
             return OpenAIProvider(api_key=api_key, model=model)
+        elif provider_lower == "ollama":
+            return OllamaProvider(api_key=api_key, model=model)
         else:
             raise InvalidProviderException(provider)
 
@@ -206,21 +208,21 @@ class RAGService:
             logger.error("System not initialized")
             yield {
                 "type": "error",
-                "message": "Sistema non inizializzato. Usa /api/system/initialize prima di fare query."
+                "message": "System not initialized. Use /api/system/initialize before querying."
             }
             yield {"type": "done"}
         except NoDocumentsException as e:
             logger.error("No documents indexed")
             yield {
                 "type": "error",
-                "message": "Nessun documento indicizzato. Carica dei documenti prima di fare query."
+                "message": "No documents indexed. Upload documents before querying."
             }
             yield {"type": "done"}
         except Exception as e:
             logger.error(f"Error during streaming query: {str(e)}", exc_info=True)
             yield {
                 "type": "error",
-                "message": f"Errore durante la query: {str(e)}"
+                "message": f"Query error: {str(e)}"
             }
             yield {"type": "done"}
 

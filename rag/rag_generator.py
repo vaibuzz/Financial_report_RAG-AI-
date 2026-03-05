@@ -33,22 +33,21 @@ class RAGGenerator:
     Includes source citations in responses.
     """
 
-    # Default system prompt for financial Q&A
-    DEFAULT_SYSTEM_PROMPT = """Sei un assistente esperto in analisi finanziaria e documenti aziendali.
+    DEFAULT_SYSTEM_PROMPT = """You are an expert assistant in financial analysis and corporate documents.
 
-Il tuo compito è rispondere alle domande dell'utente basandoti ESCLUSIVAMENTE sui documenti forniti come contesto.
+Your task is to answer the user's questions based EXCLUSIVELY on the documents provided as context.
 
-REGOLE IMPORTANTI:
-1. Rispondi SOLO usando informazioni presenti nel contesto fornito
-2. Se la risposta non è nel contesto, dì chiaramente "Non ho trovato questa informazione nei documenti forniti"
-3. Cita sempre le fonti usando il formato [Fonte: nome_documento.pdf, pagina X]
-4. Se ci sono numeri o dati specifici, citali esattamente come appaiono nei documenti
-5. Rispondi in modo conciso ma completo
-6. Usa un tono professionale ma accessibile
+IMPORTANT RULES:
+1. Reply ONLY using information present in the provided context.
+2. If the answer is not in the context, clearly state "I did not find this information in the provided documents."
+3. Always cite sources using the format [Source: document_name.pdf, page X].
+4. If there are specific numbers or data, cite them exactly as they appear in the documents.
+5. Provide concise but complete answers.
+6. Use a professional but accessible tone.
 
-FORMATO CITAZIONI:
-Quando menzioni un'informazione, aggiungi immediatamente la citazione:
-"I ricavi del Q4 2023 sono stati €50M [Fonte: relazione_annuale.pdf, pagina 5]"
+CITATION FORMAT:
+When you mention a piece of information, immediately append the citation:
+"Q4 2023 revenue was $50M [Source: annual_report.pdf, page 5]"
 """
 
     def __init__(
@@ -89,9 +88,9 @@ Quando menzioni un'informazione, aggiungi immediatamente la citazione:
             page = result.metadata.get("page", "?")
 
             context_parts.append(
-                f"[DOCUMENTO {i}]\n"
-                f"Fonte: {source}, Pagina: {page}\n"
-                f"Contenuto: {result.chunk_text}\n"
+                f"[DOCUMENT {i}]\n"
+                f"Source: {source}, Page: {page}\n"
+                f"Content: {result.chunk_text}\n"
             )
 
         return "\n".join(context_parts)
@@ -107,13 +106,13 @@ Quando menzioni un'informazione, aggiungi immediatamente la citazione:
         Returns:
             Formatted prompt string
         """
-        return f"""CONTESTO:
+        return f"""CONTEXT:
 {context}
 
-DOMANDA DELL'UTENTE:
+USER QUESTION:
 {query}
 
-Rispondi alla domanda basandoti SOLO sul contesto fornito. Includi le citazioni delle fonti."""
+Answer the question based ONLY on the provided context. Include source citations."""
 
     def generate(
             self,
@@ -135,7 +134,7 @@ Rispondi alla domanda basandoti SOLO sul contesto fornito. Includi le citazioni 
         if not search_results:
             logger.warning("No search results provided, returning empty response")
             return RAGResponse(
-                answer="Non ho trovato documenti rilevanti per rispondere a questa domanda.",
+                answer="I didn't find relevant documents to answer this question.",
                 sources=[],
                 tokens_used=0,
                 cost_usd=0.0,
@@ -155,7 +154,7 @@ Rispondi alla domanda basandoti SOLO sul contesto fornito. Includi le citazioni 
         # Generate response
         if stream:
             logger.info("Generating streaming response...")
-            print("\nRisposta: ", end="", flush=True)
+            print("\nAnswer: ", end="", flush=True)
 
             full_response = ""
             stream_generator = self.llm_provider.stream(
@@ -225,7 +224,7 @@ Rispondi alla domanda basandoti SOLO sul contesto fornito. Includi le citazioni 
                 f"Best score was {search_results[0].score:.4f}"
             )
             return RAGResponse(
-                answer=f"Non ho trovato informazioni sufficientemente rilevanti per rispondere a questa domanda (soglia di similarità: {min_score}).",
+                answer=f"I couldn't find information relevant enough to answer this question (similarity threshold: {min_score}).",
                 sources=[],
                 tokens_used=0,
                 cost_usd=0.0,
@@ -265,7 +264,7 @@ Rispondi alla domanda basandoti SOLO sul contesto fornito. Includi le citazioni 
                 logger.warning("No search results provided, returning empty response")
                 yield {
                     "type": "token",
-                    "text": "Non ho trovato documenti rilevanti per rispondere a questa domanda."
+                    "text": "I didn't find relevant documents to answer this question."
                 }
                 return
 
@@ -307,5 +306,5 @@ Rispondi alla domanda basandoti SOLO sul contesto fornito. Includi le citazioni 
             logger.error(f"Error during streaming generation: {str(e)}", exc_info=True)
             yield {
                 "type": "error",
-                "message": f"Errore durante la generazione: {str(e)}"
+                "message": f"Generation error: {str(e)}"
             }

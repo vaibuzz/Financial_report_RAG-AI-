@@ -14,7 +14,7 @@ setup(
         "numpy>=1.24.0",
     ],
     python_requires=">=3.9",
-    author="Alessandro Osti",
+    author="Vaibhav Patil",
     description="RAG system for financial document Q&A",
     keywords="rag nlp financial-analysis",
 )
